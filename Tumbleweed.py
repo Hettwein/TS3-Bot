@@ -14,6 +14,7 @@ from tkinter import *
 buddy_list = {}
 gui_buddy_list = 1
 chat_box = 1
+sendbox = 1
 nickname = ""
 PORT_LISTENING = 50000
 listener_stop= threading.Event()
@@ -90,7 +91,7 @@ def client_listener(addr, connection):
                 buddy_list.pop(buddy_name)
                 update()
                 print(buddy_name + " has disconnected.\n")
-                newMessage(buddy_name + ' has disconnected.')
+                newMessage(buddy_name + ' has disconnected.', "info")
                 break
             elif data.split(';')[0] == 'C':
                 print(buddy_name + ': ' + data.split(';')[1])
@@ -105,7 +106,7 @@ def client_listener(addr, connection):
                 buddy_name = data.split(';')[1]
                 if int(data.split(';')[3]) > 0:
                     if int(data.split(';')[3]) == 2:
-                        newMessage(buddy_name + ' has connected.')
+                        newMessage(buddy_name + ' has connected.', "info")
                         for buddy in buddy_list:
                             buddy_list[buddy].send(('D;' + addr[0] + ';' + data.split(';')[2]).encode('utf-8'))
                     connect(addr[0], data.split(';')[2])
@@ -118,7 +119,7 @@ def client_listener(addr, connection):
             buddy_list[buddy_name].close()
             buddy_list.pop(buddy_name)
             update()
-            newMessage(buddy_name + ' has disconnected.')
+            newMessage(buddy_name + ' has disconnected.', "info")
             break
     print("Connection to" + str(addr) + " closed.\n")
 
@@ -132,7 +133,7 @@ def connect(addr, port, new=0):
             buddy_list[buddy] = sock
             update()
             if new == 1:
-                newMessage(buddy + ' has connected.')
+                newMessage(buddy + ' has connected.', "info")
         except:
             print("Unexpected error while connecting:", sys.exc_info()[0])
             pass
@@ -142,8 +143,6 @@ def discover(addr):
     sock.settimeout(5)
     port = 50000
     while port <= 50005:
-        print(str(port))
-        print(str(PORT_LISTENING))
         if port != PORT_LISTENING and sock.connect_ex((addr, port)) == 0:
             try:
                 sock.send(('N;' + nickname + ';' + str(PORT_LISTENING) + ';2').encode('utf-8'))
@@ -155,7 +154,10 @@ def discover(addr):
                 print("Unexpected error while discovery:", sys.exc_info()[0])
                 pass
         port += 1
-    newMessage('You have connected to ' + addr + ':' + str(port) + '.')
+    if port == 50006:
+        newMessage("No buddy is online.", "info")
+    else:
+        newMessage('You have connected to ' + addr + ':' + str(port) + '.', "info")
     
 
 def scan():
@@ -169,16 +171,20 @@ def buddys():
 
 
 def chat(buddy, text):
-    newMessage('You: ' + text)
-    buddy_list[buddy].send(('C;' + text).encode('utf-8'))
-    print("message sent...\n\n")
+    if len(text.strip().strip(';')) > 0:
+        sendbox.delete(0, END)
+        newMessage('You: ' + text.strip(';'))
+        buddy_list[buddy].send(('C;' + text.strip(';')).encode('utf-8'))
+        #print("message sent...\n\n")
     
 
 def broadcast(text):
-    newMessage('You' + ': ' + text)
-    for buddy in buddy_list:
-        buddy_list[buddy].send(('G;' + text).encode('utf-8'))
-    print("message sent...\n\n")
+    if len(text.strip().strip(';')) > 0:
+        sendbox.delete(0, END)
+        newMessage('You' + ': ' + text.strip(';'))
+        for buddy in buddy_list:
+            buddy_list[buddy].send(('G;' + text.strip(';')).encode('utf-8'))
+        #print("message sent...\n\n")
 
 
 def disconnect():
@@ -187,7 +193,7 @@ def disconnect():
         #buddy_list[buddy].shutdown(socket.SHUT_RDWR)
         buddy_list[buddy].close()
     client_listener_stop.set()
-    newMessage('You have disconnected.')
+    newMessage('You have disconnected.', "info")
     
 
 def donothing():
@@ -209,7 +215,9 @@ def connectdialog(root):
     #addrentry.bind("<Return>", (lambda e1=filewin, e2=addrentry.get(), e3=nameentry.get(): startconnecting(e1, e2, e3)))
     #nameentry.bind("<Return>", (lambda e1=filewin, e2=addrentry.get(), e3=nameentry.get(): startconnecting(e1, e2, e3)))
     addrentry.pack(side=RIGHT, expand=YES, fill=X)
+    addrentry.bind("<Return>", (lambda event: startconnecting(filewin, addrentry.get(), nameentry.get())))
     nameentry.pack(side=RIGHT, expand=YES, fill=X)
+    nameentry.bind("<Return>", (lambda event: startconnecting(filewin, addrentry.get(), nameentry.get())))
     Label(row2, text="Nickname:", width=15, anchor='w').pack(side=LEFT)
     okbutton = Button(row3, text="Ok", command=lambda: startconnecting(filewin, addrentry.get(), nameentry.get()))
     okbutton.pack(side=LEFT)
@@ -219,6 +227,8 @@ def connectdialog(root):
 def startconnecting(root, addr, name):
     global nickname
     nickname = name
+    root.destroy()
+    newMessage("Searching for buddys . . .", "info")
     discover(addr)
 
     #input_thread = threading.Thread(target = input_processing, args = ())
@@ -226,7 +236,6 @@ def startconnecting(root, addr, name):
     
     #input_thread.start()
     listener_thread.start()
-    root.destroy()
     
     #listener_thread.join()
     #input_thread.join()
@@ -273,16 +282,19 @@ def chatbox(root):
     scrollbar.pack( side = RIGHT, fill=Y )
     
     global chat_box
-    chat_box = Listbox(root, yscrollcommand = scrollbar.set, width=60)
-    #chat_box.insert(END, "You have connected.")
+    chat_box = Text(root, yscrollcommand = scrollbar.set, width=60, state=DISABLED)
+    chat_box.tag_configure('color', foreground='#0080FF', font=('Tempus Sans ITC', 12, 'bold'))
+    chat_box.tag_configure('info', foreground='#808080', font=('Tempus Sans ITC', 12, 'italic'))
+    chat_box.tag_configure('error', foreground='#CC0000', font=('Tempus Sans ITC', 12, 'bold'))
+
     chat_box.pack( side = TOP, fill = BOTH )
-    #mylist.place(x=10, y=200)
+
     scrollbar.config( command = chat_box.yview )
 
 def onlineframe(root):
-    scrollbar = Scrollbar(root)
-    scrollbar.pack( side = RIGHT, fill=Y )
-    #scrollbar.place
+    scrollbar = Scrollbar(root, troughcolor='#476042')
+    scrollbar.pack( side = RIGHT, fill=Y)
+
     global gui_buddy_list
     gui_buddy_list = Listbox(root, yscrollcommand = scrollbar.set, height=20, width=40)
 
@@ -296,8 +308,10 @@ def update():
     for buddy in buddy_list:
         gui_buddy_list.insert(END, buddy)
 
-def newMessage(msg):
-    chat_box.insert(END, msg)
+def newMessage(msg, mode="color"):
+    chat_box.config(state=NORMAL)
+    chat_box.insert(END, msg + "\n", mode)
+    chat_box.config(state=DISABLED)
 
 def gui():
     root = Tk()
@@ -310,11 +324,12 @@ def gui():
     
     chatbox(root)
     
-    text1 = Entry(root, bd=5)
-    text1.pack(side=BOTTOM)
-    text1.bind("<Return>", (lambda event, e=text1.get(): broadcast(e)))
-    button = Button(root, text="Send", command=lambda: broadcast(text1.get()))
-    button.pack(side=BOTTOM)
+    global sendbox
+    sendbox = Entry(root, width=80)
+    sendbox.pack(side=LEFT, fill=X)
+    sendbox.bind("<Return>", (lambda event: broadcast(sendbox.get())))
+    button = Button(root, text="Send", command=lambda: broadcast(sendbox.get()))
+    button.pack(side=LEFT)
     
     root.mainloop()
 
