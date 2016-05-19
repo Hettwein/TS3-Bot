@@ -105,10 +105,10 @@ def client_listener(addr, connection):
                 buddy_name = data.split(';')[1]
                 if int(data.split(';')[3]) > 0:
                     if int(data.split(';')[3]) == 2:
+                        newMessage(buddy_name + ' has connected.')
                         for buddy in buddy_list:
                             buddy_list[buddy].send(('D;' + addr[0] + ';' + data.split(';')[2]).encode('utf-8'))
                     connect(addr[0], data.split(';')[2])
-                    newMessage(buddy_name + ' has connected.')
 
                 
         except:
@@ -131,14 +131,19 @@ def connect(addr, port, new=0):
             buddy = sock.recv(1024).decode('utf-8')
             buddy_list[buddy] = sock
             update()
+            if new == 1:
+                newMessage(buddy + ' has connected.')
         except:
+            print("Unexpected error while connecting:", sys.exc_info()[0])
             pass
 
 def discover(addr):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.settimeout(1)
+    sock.settimeout(5)
     port = 50000
     while port <= 50005:
+        print(str(port))
+        print(str(PORT_LISTENING))
         if port != PORT_LISTENING and sock.connect_ex((addr, port)) == 0:
             try:
                 sock.send(('N;' + nickname + ';' + str(PORT_LISTENING) + ';2').encode('utf-8'))
@@ -147,9 +152,10 @@ def discover(addr):
                 update()
                 break
             except:
+                print("Unexpected error while discovery:", sys.exc_info()[0])
                 pass
         port += 1
-    newMessage('You have connected to ' + addr + '.')
+    newMessage('You have connected to ' + addr + ':' + str(port) + '.')
     
 
 def scan():
