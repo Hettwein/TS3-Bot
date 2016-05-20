@@ -138,7 +138,7 @@ def connect(addr, port, new=0):
             print("Unexpected error while connecting:", sys.exc_info()[0])
             pass
 
-def discover(addr):
+def discover_thread(addr):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(5)
     port = 50000
@@ -158,7 +158,10 @@ def discover(addr):
         newMessage("No buddy is online.", "info")
     else:
         newMessage('You have connected to ' + addr + ':' + str(port) + '.', "info")
-    
+
+def discover(addr):
+    newMessage("Searching for buddys . . .", "info")
+    threading.Thread(target = discover_thread, args = (addr,)).start()
 
 def scan():
     print("start scanning")
@@ -228,7 +231,6 @@ def startconnecting(root, addr, name):
     global nickname
     nickname = name
     root.destroy()
-    newMessage("Searching for buddys . . .", "info")
     discover(addr)
 
     #input_thread = threading.Thread(target = input_processing, args = ())
@@ -316,13 +318,17 @@ def newMessage(msg, mode="color"):
 def gui():
     root = Tk()
     root.title('Tumbleweed')
-    root.minsize(507, 507)
+    #root.minsize(507, 507)
     
     menubar(root)
     
-    onlineframe(root)
+    topframe = Frame(root)
+    topframe.pack(side=TOP)
+    onlineframe(topframe)
     
-    chatbox(root)
+    midframe = Frame(root)
+    midframe.pack(side=TOP)
+    chatbox(midframe)
     
     global sendbox
     sendbox = Entry(root, width=80)
