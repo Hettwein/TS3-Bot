@@ -5,13 +5,12 @@ Created on Mon Aug  1 15:23:28 2016
 @author: Heiko
 """
 
-from DiscoverMessage import *
-from ChatMessage import *
-from BroadcastMessage import *
-from NewBuddyMessage import *
-from NameMessage import *
-from QuitMessage import *
-from MessageEncoder import *
+from model.messages.DiscoverMessage import DiscoverMessage
+from model.messages.ChatMessage import ChatMessage
+from model.messages.BroadcastMessage import BroadcastMessage
+from model.messages.QuitMessage import QuitMessage
+from model.messages.NewBuddyMessage import NewBuddyMessage
+from controller.MessageEncoder import MessageEncoder, asMessage
 
 import socket
 import threading
@@ -59,16 +58,16 @@ class MessagingReceiver:
                 data = json.loads(connection.recv(1024).decode('utf-8'), object_hook=asMessage)
                 #print("message received: " + data)
                 if isinstance(data, QuitMessage):
-                    self.controller.removeBuddy(data.name)
+                    self.controller.removeBuddy(data)
                     break
                 elif isinstance(data, BroadcastMessage):
-                    self.controller.newMessage(data)
+                    self.controller.newMessage("[" + data.timestamp + "]" + data.name + ": " + data.text)
                 elif isinstance(data, ChatMessage):
-                    self.controller.newMessage(data)
+                    self.controller.newMessage("[" + data.timestamp + "]" + data.name + ": " + data.text)
                 elif isinstance(data, DiscoverMessage):
                     self.connect(data.addr, data.port, 1)
                 elif isinstance(data, NewBuddyMessage):
-                    self.controller.newBuddy(connection, data.name, addr[0], data.port, data.new)
+                    self.controller.newBuddy(connection, data, addr[0])
             except:
                 print("Unexpected error:", sys.exc_info()[0])
                 #disconnect()
@@ -85,13 +84,9 @@ class MessagingReceiver:
         sock.settimeout(1)
         if sock.connect_ex((addr, int(port))) == 0:
             try:
-                #self.controller.newBuddy(sock, self.nickname, self.port, new)
-                print("tryen2")
                 sock.send(json.dumps(NewBuddyMessage(self.nickname, self.port, new), cls=MessageEncoder).encode('utf-8'))
-                print("oki2")
-                name = json.loads(sock.recv(1024).decode('utf-8'), object_hook=asMessage).name
-                print("doki2")
-                self.controller.addBuddy(name, sock)
+                data = json.loads(sock.recv(1024).decode('utf-8'), object_hook=asMessage)
+                self.controller.addBuddy(data, sock)
             except:
                 print("Unexpected error while connecting:", sys.exc_info()[0])
                 pass
@@ -106,25 +101,21 @@ class MessagingReceiver:
         while port <= 50005:
             if port != int(self.port) and sock.connect_ex((addr, port)) == 0:
                 try:
-                    print("tryen")
-                    sock.send(json.dumps(NewBuddyMessage(self.nickname, int(self.port), 2), cls=MessageEncoder).encode('utf-8'))
-                    print("oki")
-                    name = json.loads(sock.recv(1024).decode('utf-8'), object_hook=asMessage).name
-                    print("doki")
-                    self.controller.addBuddy(name, sock)
+                    sock.send(json.dumps(NewBuddyMessage(self.nickname, self.port, 2), cls=MessageEncoder).encode('utf-8'))
+                    data = json.loads(sock.recv(1024).decode('utf-8'), object_hook=asMessage)
+                    self.controller.addBuddy(data, sock)
                     break
                 except:
                     print("Unexpected error while discovery:", sys.exc_info()[0])
                     pass
             port += 1
         if port == 50006:
-            self.controller.newMessage(ChatMessage("No buddy is online."), "info")
-            #print("No buddy is online.", "info")
+            self.controller.newMessage("No buddy is online.", "info")
         else:
             print('You have connected to ' + addr + ':' + str(port) + '.', "info")
     
     def discover(self, addr):
-        self.controller.newMessage(ChatMessage("Searching for buddys . . ."), "info")
+        self.controller.newMessage("Searching for buddys . . .", "info")
         #print("Searching for buddys . . .", "info")
         threading.Thread(target = self.discoverThread, args = (addr,)).start()
 
@@ -136,18 +127,4 @@ class MessagingSender:
 
     def sendAll(self, buddys, message):
         for buddy in buddys:
-            buddy.send(json.dumps(message, cls=MessageEncoder).encode('utf-8'))
-
-    def sendName(self, sock, name):
-        #print(json.dumps(NameMessage(name)))
-        sock.send(json.dumps(NameMessage(name), cls=MessageEncoder).encode('utf-8'))
-
-    def sendNewBuddy(self, sock, name, port, new):
-        sock.send(json.dumps(NewBuddyMessage(name, port, new), cls=MessageEncoder).encode('utf-8'))
-
-    def sendDiscover(self, sock, addr, port):
-        sock.send(json.dumps(DiscoverMessage(addr, port), cls=MessageEncoder).encode('utf-8'))
-
-    def sendQuit(self, buddys, name):
-        for buddy in buddys:
-            buddy.send(json.dumps(QuitMessage(name), cls=MessageEncoder).encode('utf-8'))
+            buddys[buddy].send(json.dumps(message, cls=MessageEncoder).encode('utf-8'))

@@ -11,8 +11,7 @@ class Gui:
     
     def __init__(self, controller):
         self.controller = controller
-        self.gui()
-        print("hjhj")
+        #self.gui()
     
     def donothing(self):
         filewin = Toplevel(root)
@@ -146,8 +145,8 @@ class Gui:
         global sendbox
         sendbox = Entry(root, width=80)
         sendbox.pack(side=LEFT, fill=X)
-        sendbox.bind("<Return>", (lambda event: self.controller.newMessage(sendbox.get())))
-        button = Button(root, text="Send", command=lambda: self.controller.newMessage(sendbox.get()))
+        sendbox.bind("<Return>", (lambda event: self.controller.broadcast(sendbox.get())))
+        button = Button(root, text="Send", command=lambda: self.controller.broadcast(sendbox.get()))
         button.pack(side=LEFT)
         
         root.mainloop()
