@@ -6,6 +6,7 @@ Created on Mon Aug  1 17:20:22 2016
 """
 
 from controller.MessagingCommunicator import MessagingReceiver, MessagingSender
+from controller.VoiceCommunicator import VoiceReceiver, VoiceSender
 from model.User import User
 from view.Gui import Gui
 from model.messages.DiscoverMessage import DiscoverMessage
@@ -25,6 +26,8 @@ class MessagingController:
         self.receiver = MessagingReceiver(port, self, nickname)
         self.sender = MessagingSender()
         self.receiver.discover(addr)
+        self.voiceReceiver = VoiceReceiver()
+        self.voiceSender = VoiceSender()
     
     def newBuddy(self, socket, data, addr):
         msg = NameMessage(self.user.name)
@@ -71,3 +74,19 @@ class MessagingController:
         self.receiver.clientListenerStop.set()
         self.newMessage("[" + data.timestamp + "]" + 'You have disconnected.', "info")
         self.gui.update(self.user.buddys)
+
+    def startTalking(self):
+        print("mic on")
+        self.voiceSender.startStream()
+
+    def stopTalking(self):
+        print("mic off")
+        self.voiceSender.stopStream()
+
+    def startListening(self):
+        print("sound on")
+        self.voiceReceiver.startListening()
+
+    def stopListening(self):
+        print("sound off")
+        self.voiceReceiver.stopListening()

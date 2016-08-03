@@ -11,12 +11,12 @@ class Gui:
     
     def __init__(self, controller):
         self.controller = controller
+        self.micOn = False
+        self.soundOn = False
         #self.gui()
     
     def donothing(self):
-        filewin = Toplevel(root)
-        button = Button(filewin, text="Do nothing button")
-        button.pack()
+        pass
 
     def connectdialog(self, root):
         filewin = Toplevel(root)
@@ -57,6 +57,21 @@ class Gui:
         
         #print("bye")
     
+    def microphone(self):
+        if(self.micOn):
+            self.controller.stopTalking()
+            self.micOn = False
+        else:
+            self.controller.startTalking()
+            self.micOn = True
+
+    def mute(self):
+        if(self.soundOn):
+            self.controller.stopListening()
+            self.soundOn = False
+        else:
+            self.controller.startListening()
+            self.soundOn = True
     
     def menubar(self, root):
         menubar = Menu(root)
@@ -68,6 +83,9 @@ class Gui:
         connectionsmenu.add_command(label="Exit", command=root.quit)
         
         menubar.add_cascade(label="Connections", menu=connectionsmenu)
+        
+        menubar.add_command(label="Mic", command=self.microphone)
+        menubar.add_command(label="Mute", command=self.mute)
         
         contactsmenu = Menu(menubar, tearoff=0)
         contactsmenu.add_command(label="Manage contacts", command=self.donothing)
